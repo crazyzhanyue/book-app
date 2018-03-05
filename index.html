@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" name="renderer" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no"/>
+    <!-- 忽略数字自动识别为电话号码  -->
+    <meta content="telephone=no" name="format-detection" />
+    <title>APP阅读器</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet"  href="css/style.css" />
+</head>
+<body>
+
+    <!-- 根元素 包含操作 显示区域 -->
+    <div id="root" class="container">
+        <!-- 操作层弹出控制面板 -->
+        <div class="article-action-mid" id="action-mid"></div>
+        <!-- 顶部导航 -->
+        <div id="top-nav" class="top-nav" style="display: none;">
+            <div class="icon-back"></div>
+            <div class="nav-title">返回书架</div>
+        </div>
+        <!-- 标题部分 -->
+        <div id="fiction-title" ></div>
+        <!-- 内容部分 -->
+        <div id="fiction-content" class="m-read-content">
+            <h4>5654654654</h4>
+            <p>
+                iuhfuirgfuigdifgasdikgfkughhjkhbjkbnjbnjknlkn
+            </p>
+
+
+        </div>
+
+        <!-- 上下章切换 -->
+        <ul class="u-tab">
+            <li id="prev_button">上一章</li>
+            <li id="next_button">下一章</li>
+        </ul>
+
+        <!-- 底部操作面板 -->
+        <div class="nav-pannel" id="font-containner" style="display: none;">
+            <div class="child-mod">
+                <span>字号</span>
+                <button id="large-font" class="font-size-button">大</button>
+                <button id="small-font" class="font-size-button">小</button>
+            </div>
+            <div class="child-mod">
+                <span>背景</span>
+                <div class="bk-container">
+                    <div class="bk-container-current"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部导航 -->
+        <div class="footer-nav clearfix" id="footer-nav" style="display: none;">
+            <div class="item menu-button" id="menu-button">
+                <i class="font-icon icon-menu"></i>
+                <p>目录</p>
+            </div>
+            <div class="item current" id="font-button">
+                <i class="font-icon icon-font"></i>
+                <p>字体</p>
+            </div>
+            <div class="item" id="night-button">
+                <i class="font-icon icon-night"></i>
+                <p>夜间</p>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script type="text/javascript" src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery.base64.js"></script>
+    <script type="text/javascript" src="js/jquery.jsonp.js"></script>
+    <script type="text/javascript">
+        (function () {
+            //定义工具类
+            var Util = (function(){
+                //声明前缀，防止冲突
+                var prefix = 'html5_reader_';
+                //获取 storage
+                var StorageGetter = function (key) {
+                    return localStorage.getItem(prefix + key);
+                }
+                //设置 storage
+                var StorageSetter = function (key, value) {
+                    return localStorage.setItem(prefix + key, value);
+                }
+
+                //通过jsonp获取数据
+                var getJSONP = function (url, callback) {
+                    return $.jsonp({
+                        url: url,
+                        cache: true,
+                        callback: 'duo_fiction_chapter',//回调方法
+                        success: function (result) {
+                            //数据解密
+                            var data = $.base64.decode(result);
+                            var json = decodeURIComponent(escape(data));
+                            callback(data);
+                        }
+                    });
+                }
+
+                //返回方法
+                return {
+                    StorageGetter: StorageGetter,
+                    StorageSetter: StorageSetter,
+                    getJSONP: getJSONP,
+                }
+            })();
+
+            var Dom = {
+                top_nav: $('#top-nav'),
+                footer_nav: $('#footer-nav'),
+                font_containner: $('#font-containner'),
+                font_button: $('#font-button'),
+
+            }
+            var Win = $(window);
+            var Doc = $(document);
+            var RootContainer = $('#fiction-content');
+            var InitFontSize = parseInt(Util.StorageGetter('font-size')) || 14;
+            RootContainer.css('font-size',InitFontSize);
+
+            //整个项目入口函数
+            function main() {
+                ReaderModel();
+                EventHanlder();
+            }
+
+            //实现和阅读器相关的数据交互的方法
+            function ReaderModel() {
+                //章节id
+                var chapter_id;
+                //获取章节信息
+                var getFictionInfo = function (callback) {
+                    $.get('data/chapter.json', function(data) {
+                        //获取章节信息后回调
+                        chapter_id = data.chapters[1].chapter_id;
+                        callback && callback(data);
+                    }, 'json');
+
+                //获取章节内容
+                var getChapterContent = function(chapter_id, data) {
+                    $.get('data/data' + chapter_id + '.json', function(data) {
+                        if (data.result == 0) {
+                            var url = data.jsonp;
+                            Util.getJSONP(url, function(data){
+                                callback && callback(data);
+                            });
+                        }
+                    }, 'json');
+                }
+            }
+
+               //初始化
+               var init = function () {
+                getFictionInfo(function() {
+                    getChapterContent(chapter_id, function(){
+
+                    });
+                });
+            }
+
+            init();
+        }
+
+            //渲染基本的UI结构
+            function ReaderBaseFrame() {
+
+            }
+
+            //交互事件绑定
+            function EventHanlder() {
+                $('#action-mid').click(function () {
+                    if (Dom.top_nav.css('display') == 'none') {
+                        Dom.top_nav.show();
+                        Dom.footer_nav.show();
+                    }else{
+                     Dom.top_nav.hide();
+                     Dom.footer_nav.hide();
+                     Dom.font_containner.hide();
+                     Dom.font_button.addClass('current');
+                 }
+             });
+
+                $('#night-button').click(function () {
+
+                });
+
+                //设置字号并存储大小
+                $('#large-font').click(function () {
+                    if (InitFontSize > 20) {
+                        return;
+                    }
+                    InitFontSize += 1;
+                    RootContainer.css('font-size',InitFontSize);
+                    Util.StorageSetter('font-size', InitFontSize);
+                });
+
+                $('#small-font').click(function () {
+                  if (InitFontSize < 12) {
+                    return;
+                }
+                InitFontSize -= 1;
+                RootContainer.css('font-size',InitFontSize);
+                Util.StorageSetter('font-size', InitFontSize);
+            });
+
+                Dom.font_button.click(function () {
+                    if (Dom.font_containner.css('display') == 'none') {
+                        Dom.font_containner.show();
+                        Dom.font_button.removeClass('current');
+                    }else{
+                     Dom.font_containner.hide();
+                     Dom.font_button.addClass('current');
+                 }
+             });
+
+
+                //页面滚动隐藏上下导航栏
+                Win.scroll(function() {
+                  Dom.top_nav.hide();
+                  Dom.footer_nav.hide();
+                  Dom.font_containner.hide();
+                  Dom.font_button.addClass('current');
+              });
+
+            }
+
+            main();
+
+
+        })();
+
+    </script>
+</body>
+</html>
