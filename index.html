@@ -7,8 +7,6 @@
     <!-- 忽略数字自动识别为电话号码  -->
     <meta content="telephone=no" name="format-detection" />
     <title>APP阅读器</title>
-    <meta name="description" content="" />
-    <meta name="keywords" content="" />
     <link rel="stylesheet"  href="css/style.css" />
 </head>
 <body>
@@ -33,7 +31,7 @@
         </div>
 
         <!-- 上下章切换 -->
-        <ul class="u-tab">
+        <ul class="u-tab" id="u_tab_btn" style="display: none;">
             <li id="prev_button">上一章</li>
             <li id="next_button">下一章</li>
         </ul>
@@ -45,7 +43,7 @@
                 <button id="large-font" class="font-size-button">大</button>
                 <button id="small-font" class="font-size-button">小</button>
             </div>
-            <div class="child-mod">
+            <div class="child-mod" id="bk-container">
                 <span>背景</span>
                 <div class="bk-container">
                     <div class="bk-container-current"></div>
@@ -64,19 +62,27 @@
                 <p>字体</p>
             </div>
             <div class="item" id="night-button">
-                <i class="font-icon icon-night"></i>
-                <p>夜间</p>
-            </div>
-        </div>
+                <div class="item-warp" style="display:none" id="day_icon">
+                   <i class="font-icon icon-day"></i>
+                   <p>白天</p>
+               </div>
+               <div class="item-warp" id="night_icon">
+                 <i class="font-icon icon-night"></i>
+                 <p>夜间</p>
+             </div>
+         </div>
+
+     </div>
+ </div>
 
 
-    </div>
+</div>
 
-    <script type="text/javascript" src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
-    <script type="text/javascript" src="js/jquery.base64.js"></script>
-    <script type="text/javascript" src="js/jquery.jsonp.js"></script>
-    <script type="text/javascript">
-        (function () {
+<script type="text/javascript" src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+<script type="text/javascript" src="js/jquery.base64.js"></script>
+<script type="text/javascript" src="js/jquery.jsonp.js"></script>
+<script type="text/javascript">
+    (function () {
             //使用es6 必须在严格模式下进行
             'use strict';
             //定义工具类
@@ -123,14 +129,15 @@
                     var Dom = {
                         top_nav: $('#top-nav'),
                         footer_nav: $('#footer-nav'),
+                        bk_container : $('#bk-container'),
                         font_containner: $('#font-containner'),
                         font_button: $('#font-button'),
-
+                        night_button : $('#night-button'),
+                        u_tab_btn: $('#u_tab_btn'),
                     }
 
                     var Win = $(window);
                     var Doc = document;
-                    var Screen = Doc.body;
                     var RootContainer = $('#fiction-content');
                     var InitFontSize = parseInt(Util.StorageGetter('font-size')) || 14;
                     RootContainer.css('font-size',InitFontSize);
@@ -138,19 +145,103 @@
                     var readModel;
                     var readerUI;
 
+                    //是否是夜间模式
+                    var NightMode = false;
+
 
                     readModel = ReaderModel();
                     //数据渲染
                     readerUI = ReaderBaseFrame(RootContainer);
                     readModel.init(function(data) {
-                        readerUI(data);
-                        setTimeout(function() {
-                            Screen.scrollTop = 0;
-                        }, 20);
-                    });
+                       readerUI(data);
+                       Dom.u_tab_btn.show();
+                   });
 
-                    //交互事件绑定
-                    var EventHanlder = (function () {
+
+
+                     //从缓存中读取的信息进行展示
+                     var ModuleFontSwitch = (function() {
+                        //字体和背景的颜色表
+                        var colorArr = [{
+                            value : '#f7eee5',
+                            name : '米白',
+                            font : ''
+                        }, {
+                            value : '#e9dfc7',
+                            name : '纸张',
+                            font : '',
+                            id : "font_normal"
+                        }, {
+                            value : '#a4a4a4',
+                            name : '浅灰',
+                            font : ''
+                        }, {
+                            value : '#cdefce',
+                            name : '护眼',
+                            font : ''
+                        }, {
+                            value : '#283548',
+                            name : '灰蓝',
+                            font : '#7685a2',
+                            bottomcolor : '#fff'
+                        }, {
+                            value : '#0f1410',
+                            name : '夜间',
+                            font : '#4e534f',
+                            bottomcolor : 'rgba(255,255,255,0.7)',
+                            id : "font_night"
+                        }];
+
+                        var tool_bar = Util.StorageGetter('toolbar_background_color');
+                        var bottomcolor = Util.StorageGetter('bottom_color');
+                        var color = Util.StorageGetter('background_color');
+                        var font = Util.StorageGetter('font_color');
+                        var bkCurColor = Util.StorageGetter('background_color');
+                        var fontColor = Util.StorageGetter('font_color');
+
+                        for (var i = 0; i < colorArr.length; i++) {
+                            var display = 'none';
+                            if (bkCurColor == colorArr[i].value) {
+                                display = '';
+                            }
+                            Dom.bk_container.append('<div class="bk-container" id="' + colorArr[i].id + '" data-font="' + colorArr[i].font + '"  data-bottomcolor="' + colorArr[i].bottomcolor + '" data-color="' + colorArr[i].value + '" style="background-color:' + colorArr[i].value + '"><div class="bk-container-current" style="display:' + display + '"></div><span style="display:none">' + colorArr[i].name + '</span></div>');
+                        }
+
+                        RootContainer.css('min-height', $(window).height() - 100);
+
+                        if (bottomcolor) {
+                            $('#bottom_tool_bar_ul').find('li').css('color', bottomcolor);
+                        }
+
+                        if (color) {
+                            $('body').css('background-color', color);
+                        }
+
+                        if (font) {
+                            $('.m-read-content').css('color', font);
+                        }
+
+                        //夜间模式
+                        if (fontColor == '#4e534f') {
+                            NightMode = true;
+                            $('#day_icon').show();
+                            $('#night_icon').hide();
+                            $('#bottom_tool_bar_ul').css('opacity', '0.6');
+                        }
+
+                        //字体设置信息
+                        InitFontSize = Util.StorageGetter('font_size');
+                        InitFontSize = parseInt(InitFontSize);
+                        if (!InitFontSize) {
+                            InitFontSize = 18;
+                        }
+
+                    })();
+
+
+
+                       //交互事件绑定
+                       var EventHanlder = (function () {
                            //屏幕中央事件
                            $('#action-mid').click(function () {
                             if (Dom.top_nav.css('display') == 'none') {
@@ -164,20 +255,74 @@
                            }
                        });
 
-                         //调出字体背景设置面板
-                         Dom.font_button.click(function () {
-                            if (Dom.font_containner.css('display') == 'none') {
-                                Dom.font_containner.show();
-                                Dom.font_button.removeClass('current');
-                            }else{
-                               Dom.font_containner.hide();
-                               Dom.font_button.addClass('current');
-                           }
-                       });
+                       //调出字体背景设置面板
+                       Dom.font_button.click(function () {
+                        if (Dom.font_containner.css('display') == 'none') {
+                            Dom.font_containner.show();
+                            Dom.font_button.removeClass('current');
+                        }else{
+                           Dom.font_containner.hide();
+                           Dom.font_button.addClass('current');
+                       }
+                   });
 
-                         $('#night-button').click(function () {
+                         //夜间和白天模式的转化
+                         Dom.night_button.click(function() {
+                            if (NightMode) {
+                                $('#day_icon').hide();
+                                $('#night_icon').show();
+                                $('#font_normal').trigger('click');
+                                NightMode = false;
+                            } else {
+                                $('#day_icon').show();
+                                $('#night_icon').hide();
+                                $('#font_night').trigger('click');
+                                NightMode = true;
+                            }
+                        });
 
-                         });
+                           //字体和背景颜色的信息设置
+                           Dom.bk_container.delegate('.bk-container', 'click', function() {
+                            var color = $(this).data('color');
+                            var font = $(this).data('font');
+                            var bottomcolor = $(this).data('bottomcolor');
+                            var tool_bar = font;
+                            Dom.bk_container.find('.bk-container-current').hide();
+                            $(this).find('.bk-container-current').show();
+                            if (!font) {
+                                font = '#000';
+                            }
+                            if (!tool_bar) {
+                                tool_bar = '#fbfcfc';
+                            }
+
+                            if (bottomcolor && bottomcolor != "undefined") {
+                                $('#bottom_tool_bar_ul').find('li').css('color', bottomcolor);
+                            } else {
+                                $('#bottom_tool_bar_ul').find('li').css('color', '#a9a9a9');
+                            }
+                            $('body').css('background-color', color);
+                            $('.m-read-content').css('color', font);
+
+                            Util.StorageSetter('toolbar_background_color', tool_bar);
+                            Util.StorageSetter('bottom_color', bottomcolor);
+                            Util.StorageSetter('background_color', color);
+                            Util.StorageSetter('font_color', font);
+
+                            var fontColor = Util.StorageGetter('font_color');
+                            //夜间模式
+                            if (fontColor == '#4e534f') {
+                                NightMode = true;
+                                $('#day_icon').show();
+                                $('#night_icon').hide();
+                                $('#bottom_tool_bar_ul').css('opacity', '0.6');
+                            } else {
+                                NightMode = false;
+                                $('#day_icon').hide();
+                                $('#night_icon').show();
+                                $('#bottom_tool_bar_ul').css('opacity', '0.9');
+                            }
+                        });
 
                         //设置字号并存储大小
                         $('#large-font').click(function () {
@@ -311,7 +456,7 @@
                 //获取上一章节内容
                 var prevChapter = function (UIcallback) {
                     chapter_id = parseInt(chapter_id, 10);
-                    if (chapter_id == 0) { return };
+                    if (chapter_id == 1) { return false};
                     chapter_id  -= 1;
                     getChapterContent(chapter_id, UIcallback);
                     Util.StorageSetter('last_capter_id', chapter_id);
@@ -320,7 +465,7 @@
                 //获取下一章节内容
                 var nextChapter = function (UIcallback) {
                     chapter_id = parseInt(chapter_id, 10);
-                    if (chapter_id == chapterTotal) { return };
+                    if (chapter_id == chapterTotal) { return false};
                     chapter_id  += 1;
                     getChapterContent(chapter_id, UIcallback);
                     Util.StorageSetter('last_capter_id', chapter_id);
@@ -347,6 +492,10 @@
              }
              return function(data) {
                 container.html(parseChapterData(data));
+                var Screen = document.body;
+                setTimeout(function() {
+                    Screen.scrollTop = 0;
+                }, 20);
             }
         }
 
